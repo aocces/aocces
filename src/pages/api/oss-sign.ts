@@ -37,6 +37,7 @@ export const POST: APIRoute = async ({ request }) => {
             method: 'PUT',
             expires: 60,
             'Content-Type': contentType || 'application/octet-stream',
+            protocol: 'https',
         });
 
         const publicUrl = `https://${import.meta.env.OSS_PUBLIC_HOST}/${objectKey}`;
