@@ -1,0 +1,86 @@
+---
+---
+
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OSS 上传测试</title>
+</head>
+<body style="font-family: sans-serif; padding: 2rem; max-width: 720px; margin: 0 auto;">
+<h1>OSS 上传测试</h1>
+<p>选择一张图片，测试是否能通过 /api/oss-sign 上传到 OSS。</p>
+
+<input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+<button id="uploadBtn" style="margin-left: 12px;">上传</button>
+
+<p id="status" style="margin-top: 1rem;"></p>
+
+<div id="result" style="margin-top: 1rem; display: none;">
+    <p><strong>图片链接：</strong></p>
+    <input id="imageUrl" type="text" readonly style="width: 100%; padding: 8px;" />
+    <p style="margin-top: 1rem;"><strong>预览：</strong></p>
+    <img id="preview" src="" alt="上传后的图片" style="max-width: 100%; border: 1px solid #ddd; border-radius: 8px;" />
+</div>
+
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const status = document.getElementById('status');
+    const result = document.getElementById('result');
+    const imageUrl = document.getElementById('imageUrl');
+    const preview = document.getElementById('preview');
+
+    uploadBtn.addEventListener('click', async () => {
+        const file = fileInput.files?.[0];
+        if (!file) {
+            status.textContent = '请先选择一张图片。';
+            return;
+        }
+
+        try {
+            status.textContent = '正在请求上传签名...';
+
+            const signRes = await fetch('/api/oss-sign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fileName: file.name,
+                    contentType: file.type,
+                }),
+            });
+
+            if (!signRes.ok) {
+                const errText = await signRes.text();
+                throw new Error(`签名接口失败: ${errText}`);
+            }
+
+            const { uploadUrl, publicUrl } = await signRes.json();
+
+            status.textContent = '正在上传到 OSS...';
+
+            const uploadRes = await fetch(uploadUrl, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': file.type || 'application/octet-stream',
+                },
+                body: file,
+            });
+
+            if (!uploadRes.ok) {
+                const errText = await uploadRes.text();
+                throw new Error(`OSS 上传失败: ${errText}`);
+            }
+
+            status.textContent = '上传成功。';
+            imageUrl.value = publicUrl;
+            preview.src = publicUrl;
+            result.style.display = 'block';
+        } catch (err) {
+            console.error(err);
+            status.textContent = `出错了：${err.message}`;
+        }
+    });
+</script>
+</body>
+</html>
