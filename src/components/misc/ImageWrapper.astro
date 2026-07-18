@@ -32,16 +32,31 @@ if (isLocal) {
 	const files = import.meta.glob<ImageMetadata>("../../**", {
 		import: "default",
 	});
-	let normalizedPath = path
-		.normalize(path.join("../../", basePath, src))
-		.replace(/\\/g, "/");
-	const file = files[normalizedPath];
-	if (!file) {
+	// Normalize glob keys: strip leading "../" sequences so we can match on a
+	// stable "path relative to src/" key. Vite emits keys with a different
+	// number of "../" prefixes depending on the platform (Windows -> "../x",
+	// POSIX -> "../../x"), which broke the previous exact-string lookup.
+	const fileMap: Record<string, () => Promise<ImageMetadata>> = {};
+	for (const key of Object.keys(files)) {
+		const rel = key.replace(/^(\.\.\/)+/, "");
+		if (!fileMap[rel]) {
+			fileMap[rel] = files[key] as () => Promise<ImageMetadata>;
+		}
+	}
+	// Compute the target path relative to src/. basePath is relative to src/
+	// ("/" means the src root); src is relative to basePath.
+	const targetRel = path.posix
+		.join(basePath === "/" ? "" : basePath, src)
+		.replace(/^\.\//, "")
+		.replace(/^src\//, "");
+	const file = fileMap[targetRel];
+	if (typeof file === "function") {
+		img = await file();
+	} else {
 		console.error(
-			`\n[ERROR] Image file not found: ${normalizedPath.replace("../../", "src/")}`,
+			`\n[ERROR] Image file not found: src/${targetRel} (src="${src}", basePath="${basePath}")`,
 		);
 	}
-	img = await file();
 }
 
 const imageClass = "w-full h-full object-cover";

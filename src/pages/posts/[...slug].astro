@@ -1,5 +1,4 @@
 ---
-import path from "node:path";
 import License from "@components/misc/License.astro";
 import Markdown from "@components/misc/Markdown.astro";
 import I18nKey from "@i18n/i18nKey";
@@ -24,6 +23,7 @@ export async function getStaticPaths() {
 }
 
 const { entry } = Astro.props;
+const postBasePath = getDir(entry.filePath ?? entry.id).replace(/^src\//, "");
 const { Content, headings } = await render(entry);
 
 const { remarkPluginFrontmatter } = await render(entry);
@@ -99,7 +99,7 @@ const jsonLd = {
             <!-- always show cover as long as it has one -->
 
             {entry.data.image &&
-                <ImageWrapper id="post-cover" src={entry.data.image} basePath={path.join("content/posts/", getDir(entry.id))} class="mb-8 rounded-xl banner-container onload-animation"/>
+                <ImageWrapper id="post-cover" src={entry.data.image} basePath={postBasePath} class="mb-8 rounded-xl banner-container onload-animation"/>
             }
 
 
